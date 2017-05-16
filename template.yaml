@@ -1,0 +1,165 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Static Site Stack
+Parameters:
+  DomainName:
+    Description: The site domain name (e.g. example.com)
+    Type: String
+  AcmCertificateArn:
+    Type: String
+  ConfluenceOrigin:
+    Type: String
+  JiraOrigin:
+    Type: String
+Mappings:
+  S3WebsiteMap:
+    us-east-1:
+      S3hostedzoneID: Z3AQBSTGFYJSTF
+      endpoint: s3-website-us-east-1.amazonaws.com
+    us-west-1:
+      S3hostedzoneID: Z2F56UZL2M1ACD
+      endpoint: s3-website-us-west-1.amazonaws.com
+    us-west-2:
+      S3hostedzoneID: Z3BJ6K6RIION7M
+      endpoint: s3-website-us-west-2.amazonaws.com
+    eu-west-1:
+      S3hostedzoneID: Z1BKCTXD74EZPE
+      endpoint: s3-website-eu-west-1.amazonaws.com
+    ap-southeast-1:
+      S3hostedzoneID: Z3O0J2DXBE1FTB
+      endpoint: s3-website-ap-southeast-1.amazonaws.com
+    ap-southeast-2:
+      S3hostedzoneID: Z1WCIGYICN2BYD
+      endpoint: s3-website-ap-southeast-2.amazonaws.com
+    ap-northeast-1:
+      S3hostedzoneID: Z2M4EHUR26P7ZW
+      endpoint: s3-website-ap-northeast-1.amazonaws.com
+    sa-east-1:
+      S3hostedzoneID: Z31GFT0UA1I2HV
+      endpoint: s3-website-sa-east-1.amazonaws.com
+Resources:
+  RootWebBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Ref DomainName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: 404.html
+  WWWWebBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      AccessControl: BucketOwnerFullControl
+      BucketName: !Sub www.${DomainName}
+      WebsiteConfiguration:
+        RedirectAllRequestsTo:
+          HostName: !Ref RootWebBucket
+  LegalWebBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Sub legal.${DomainName}
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: 404.html
+  RootWebBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RootWebBucket
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:GetObject
+          Effect: Allow
+          Resource: !Sub arn:aws:s3:::${RootWebBucket}/*
+          Principal: '*'
+  LegalWebBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref LegalWebBucket
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:GetObject
+          Effect: Allow
+          Resource: !Sub arn:aws:s3:::${LegalWebBucket}/*
+          Principal: '*'
+  RootRoute:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !Sub ${RootCloudFront.DomainName}
+        HostedZoneId: Z2FDTNDATAQYW2
+      HostedZoneName: !Sub ${DomainName}.
+      Name: !Sub ${DomainName}.
+      Type: A
+  WWWWRoute:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !Sub ${RootCloudFront.DomainName}
+        HostedZoneId: Z2FDTNDATAQYW2
+      HostedZoneName: !Sub ${DomainName}.
+      Name: !Sub www.${DomainName}.
+      Type: A
+  ConfluenceRoute:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Sub ${DomainName}.
+      Name: !Sub confluence.${DomainName}.
+      ResourceRecords:
+      - !Ref ConfluenceOrigin
+      TTL: 300
+      Type: A
+  JiraRoute:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Sub ${DomainName}.
+      Name: !Sub jira.${DomainName}.
+      ResourceRecords:
+      - !Ref JiraOrigin
+      TTL: 300
+      Type: A
+  RootCloudFront:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+        - !Ref DomainName
+        - !Sub www.${DomainName}
+        Origins:
+        - DomainName: !Sub
+          - ${RootWebBucket}.${Endpoint}
+          - Endpoint: !FindInMap [ S3WebsiteMap, !Ref 'AWS::Region', endpoint ]
+          Id: RootS3Bucket
+          CustomOriginConfig:
+            OriginProtocolPolicy: https-only
+        Enabled: true
+        HttpVersion: http2
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          TargetOriginId: RootS3Bucket
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+            Headers: []
+          DefaultTTL: 604800
+          MinTTL: 604800
+          MaxTTL: 604800
+          SmoothStreaming: false
+          ViewerProtocolPolicy: redirect-to-https
+        CustomErrorResponses:
+          ErrorCachingMinTTL: 5
+          ErrorCode: 404
+          ResponseCode: 200
+          ResponsePagePath: /index.html
+        PriceClass: PriceClass_200
+        ViewerCertificate:
+          SslSupportMethod: sni-only
+          AcmCertificateArn: !Ref AcmCertificateArn

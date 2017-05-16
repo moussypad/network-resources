@@ -1,0 +1,8 @@
+{
+    "Parameters": {
+        "DomainName": "moussypad.com",
+        "AcmCertificateArn": "arn:aws:acm:us-east-1:146676994108:certificate/73da057c-75d0-4acb-808e-089bde9c51f7",
+        "ConfluenceOrigin": "101.78.190.246",
+        "JiraOrigin": "101.78.190.246"
+    }
+}
