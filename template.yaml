@@ -155,10 +155,10 @@ Resources:
           SmoothStreaming: false
           ViewerProtocolPolicy: redirect-to-https
         CustomErrorResponses:
-          ErrorCachingMinTTL: 5
-          ErrorCode: 404
-          ResponseCode: 200
-          ResponsePagePath: /index.html
+          - ErrorCachingMinTTL: 5
+            ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
         PriceClass: PriceClass_200
         ViewerCertificate:
           SslSupportMethod: sni-only
