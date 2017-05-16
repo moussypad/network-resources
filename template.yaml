@@ -135,7 +135,7 @@ Resources:
           - Endpoint: !FindInMap [ S3WebsiteMap, !Ref 'AWS::Region', endpoint ]
           Id: RootS3Bucket
           CustomOriginConfig:
-            OriginProtocolPolicy: https-only
+            OriginProtocolPolicy: http-only
         Enabled: true
         HttpVersion: http2
         DefaultRootObject: index.html
